@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # UTC 2点30分(北京时间 10点30分)
-    - cron: 30 2 * * *
+    - cron: 30 3 * * *
   # 标星时触发工作流程
   watch:
     types: [started]
