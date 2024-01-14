@@ -9,6 +9,7 @@ if __name__ == '__main__':
     sendContent = ''
 # glados账号cookie 直接使用数组 如果使用环境变量需要字符串分割一下
     cookies = os.environ.get("GLADOS_COOKIE", []).split("&")
+    # cookies=['_gid=GA1.2.1885289034.1704877620; koa:sess=eyJ1c2VySWQiOjQ1NjgzNSwiX2V4cGlyZSI6MTczMDc5Nzk1NzM3OCwiX21heEFnZSI6MjU5MjAwMDAwMDB9; koa:sess.sig=AfNucTDEY1vYBMV4wpAXzxnOm0s; _gat_gtag_UA_104464600_2=1; _ga=GA1.1.30641093.1704877620; _ga_CZFVKMNT9J=GS1.1.1704944351.3.1.1704944363.0.0.0']
     if cookies[0] == "":
         print('未获取到COOKIE变量') 
         cookies = []
@@ -26,7 +27,7 @@ if __name__ == '__main__':
         state =  requests.get(url2,headers={'cookie': cookie ,'referer': referer,'origin':origin,'user-agent':useragent})
     #--------------------------------------------------------------------------------------------------------#  
         time = state.json()['data']['leftDays']
-        time = time.split('.')[0]
+        time = str(time).split('.')[0]
         email = state.json()['data']['email']
         if 'message' in checkin.text:
             mess = checkin.json()['message']
