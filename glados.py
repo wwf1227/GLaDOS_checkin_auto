@@ -1,43 +1,88 @@
-import requests,json,os
-# -------------------------------------------------------------------------------------------
-# github workflows
-# -------------------------------------------------------------------------------------------
-if __name__ == '__main__':
-# pushplus秘钥 申请地址 http://www.pushplus.plus
-    sckey = os.environ.get("PUSHPLUS_TOKEN", "")
-# 推送内容
-    sendContent = ''
-# glados账号cookie 直接使用数组 如果使用环境变量需要字符串分割一下
-    cookies = os.environ.get("GLADOS_COOKIE", []).split("&")
-    # cookies=['_gid=GA1.2.1885289034.1704877620; koa:sess=eyJ1c2VySWQiOjQ1NjgzNSwiX2V4cGlyZSI6MTczMDc5Nzk1NzM3OCwiX21heEFnZSI6MjU5MjAwMDAwMDB9; koa:sess.sig=AfNucTDEY1vYBMV4wpAXzxnOm0s; _gat_gtag_UA_104464600_2=1; _ga=GA1.1.30641093.1704877620; _ga_CZFVKMNT9J=GS1.1.1704944351.3.1.1704944363.0.0.0']
-    if cookies[0] == "":
-        print('未获取到COOKIE变量') 
-        cookies = []
-        exit(0)
-    url= "https://glados.rocks/api/user/checkin"
-    url2= "https://glados.rocks/api/user/status"
-    referer = 'https://glados.rocks/console/checkin'
-    origin = "https://glados.rocks"
-    useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
-    payload={
-        'token': 'glados.one'
-    }
-    for cookie in cookies:
-        checkin = requests.post(url,headers={'cookie': cookie ,'referer': referer,'origin':origin,'user-agent':useragent,'content-type':'application/json;charset=UTF-8'},data=json.dumps(payload))
-        state =  requests.get(url2,headers={'cookie': cookie ,'referer': referer,'origin':origin,'user-agent':useragent})
-    #--------------------------------------------------------------------------------------------------------#  
-        time = state.json()['data']['leftDays']
-        time = str(time).split('.')[0]
-        email = state.json()['data']['email']
-        if 'message' in checkin.text:
-            mess = checkin.json()['message']
-            print(email+'----结果--'+mess+'----剩余('+time+')天')  # 日志输出
-            sendContent += email+'----'+mess+'----剩余('+time+')天\n'
+# coding=utf-8
+"""
+ @Time : 2025/2/22
+ @Author : wwf
+ Description: 
+"""
+import requests
+import json
+import os
+
+headers = {
+    "accept": "application/json, text/plain, */*",
+    "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+    # "authorization": "88427466544403502978006267476007-900-1440",
+    "cache-control": "no-cache",
+    "content-type": "application/json;charset=UTF-8",
+    "origin": "https://glados.one",
+    "pragma": "no-cache",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Microsoft Edge\";v=\"132\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"macOS\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0"
+}
+
+
+class Glados:
+    def __init__(self, cookie):
+        cookies_dict = {}
+        for cook in cookie.split(';'):
+            name, value = cook.strip().split('=')
+            cookies_dict[name] = value
+
+        self.session = requests.Session()
+        # 将Cookie字典添加到Session对象中
+        self.session.cookies.update(cookies_dict)
+
+    def main(self):
+        if self.getState() > 0:
+            self.checkin()
+            print(self.email + '----结果--' + self.message + '----剩余(' + self.time + ')天')  # 日志输出
+
+    def getState(self):
+        url = "https://glados.one/api/user/status"
+        response = self.session.get(url, headers=headers)
+        if response.status_code != 200:
+            print(f"status response.status_code is {response.status_code}")
+            exit(1)
+        res_json = response.json()
+        # print(res_json)
+        if res_json['code'] == 0:
+            time = response.json()['data']['leftDays']
+            self.time = str(time).split('.')[0]
+            self.email = res_json['data']['email']
+            return 1
         else:
-            requests.get('http://www.pushplus.plus/send?token=' + sckey + '&content='+email+'cookie已失效')
-            print('cookie已失效')  # 日志输出
-     #--------------------------------------------------------------------------------------------------------#   
-    if sckey != "":
-         requests.get('http://www.pushplus.plus/send?token=' + sckey + '&title='+email+'签到成功'+'&content='+sendContent)
+            print(f"status 响应内容 code 为：{res_json['code']}")
+            exit(1)
+
+    def checkin(self):
+        url = "https://glados.one/api/user/checkin"
+        data = {
+            "token": "glados.one"
+        }
+        data = json.dumps(data, separators=(',', ':'))
+        response = self.session.post(url, headers=headers, data=data)
+        if response.status_code != 200:
+            print(f"checkin response.status_code is {response.status_code}")
+            exit(1)
+        res_json = response.json()
+        self.message = res_json['message']
+        if res_json['code'] == 1:
+            print(res_json['list'][0])
 
 
+if __name__ == '__main__':
+    cookies = os.environ.get("GLADOS_COOKIE", []).split("&")
+    # cookies = [
+    #     'koa:sess=eyJ1c2VySWQiOjQ1NjgzNSwiX2V4cGlyZSI6MTc2NjExMDU2MDY5MywiX21heEFnZSI6MjU5MjAwMDAwMDB9; koa:sess.sig=cXzbdR5GUHZ_NbKGLY4SNMF7Hdo']
+    if len(cookies) <= 0:
+        print('未获取到COOKIE变量')
+        exit(0)
+    for cookie in cookies:
+        glados = Glados(cookie)
+        glados.main()
